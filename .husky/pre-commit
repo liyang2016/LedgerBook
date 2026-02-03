@@ -19,11 +19,38 @@ fi
 # Run code linting (if hvigorw is available)
 if command -v hvigorw &> /dev/null; then
     echo "🔍 Running code linter..."
-    hvigorw code-lint
+    hvigorw code-lint --parallel
     if [ $? -ne 0 ]; then
         echo "❌ Code linting failed. Please fix the issues."
         exit 1
     fi
 fi
 
-echo "✅ Pre-commit checks passed!"
+# Run automated tests (critical!)
+echo ""
+echo "🧪 Running automated tests (required to pass)..."
+echo "------------------------------------------------"
+
+if [ -f "$(dirname "$0")/run-tests.sh" ]; then
+    bash "$(dirname "$0")/run-tests.sh"
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "❌ Tests failed! Commit aborted."
+        echo "Please fix the failing tests before committing."
+        echo "Run 'npm run test' for more details."
+        exit 1
+    fi
+else
+    # Fallback: run basic test command
+    if command -v hvigorw &> /dev/null; then
+        hvigorw test --parallel
+        if [ $? -ne 0 ]; then
+            echo "❌ Tests failed! Commit aborted."
+            exit 1
+        fi
+    fi
+fi
+
+echo ""
+echo "✅ Pre-commit checks and tests passed!"
+echo "Commit will proceed..."

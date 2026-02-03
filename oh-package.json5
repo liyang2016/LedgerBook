@@ -1,10 +1,20 @@
 
 {
   "modelVersion": "5.1.1",
-  "description": "Please describe the basic information.",
+  "description": "LedgerBook - A HarmonyOS accounting application",
   "dependencies": {},
   "devDependencies": {
     "@ohos/hypium": "1.0.24",
     "@ohos/hamock": "1.0.0"
+  },
+  "scripts": {
+    "test": "hvigorw test --parallel",
+    "test:unit": "hvigorw test --module entry --target LocalUnit",
+    "test:ui": "hvigorw test --module entry --target OhosTest",
+    "test:watch": "hvigorw test --watch",
+    "lint": "hvigorw code-lint --parallel",
+    "build": "hvigorw assembleHap --parallel",
+    "verify": "hvigorw code-lint --parallel && hvigorw test --parallel && hvigorw assembleHap --parallel",
+    "precommit": "bash .husky/run-tests.sh"
   }
 }

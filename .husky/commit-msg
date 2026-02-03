@@ -1,0 +1,38 @@
+#!/bin/sh
+
+# 获取提交信息文件
+COMMIT_MSG_FILE=$1
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+echo "📝 Checking commit message format..."
+
+# 提交信息格式检查
+# 支持的类型: feat, fix, docs, style, refactor, perf, test, chore
+VALID_TYPES="feat|fix|docs|style|refactor|perf|test|chore|ci|build"
+PATTERN="^($VALID_TYPES)(\(.+\))?: .+"
+
+if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
+    echo "❌ Invalid commit message format!"
+    echo ""
+    echo "Expected format: <type>(<scope>): <description>"
+    echo ""
+    echo "Valid types:"
+    echo "  feat:     新功能"
+    echo "  fix:      修复bug"
+    echo "  docs:     文档更新"
+    echo "  style:    代码格式调整"
+    echo "  refactor: 代码重构"
+    echo "  perf:     性能优化"
+    echo "  test:     测试相关"
+    echo "  chore:    构建/工具相关"
+    echo "  ci:       CI/CD配置"
+    echo "  build:    构建系统"
+    echo ""
+    echo "Examples:"
+    echo "  feat: add voice recording for transactions"
+    echo "  fix(auth): resolve login timeout issue"
+    echo "  docs: update README with new features"
+    exit 1
+fi
+
+echo "✅ Commit message format is valid!"

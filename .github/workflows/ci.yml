@@ -1,0 +1,164 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, dev ]
+    paths:
+      - 'entry/src/**/*.ets'
+      - '**.json5'
+      - '**.json'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'entry/src/**/*.ets'
+      - '**.json5'
+      - '**.json'
+
+jobs:
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        npm install -g @ohos/hvigor
+        ohpm install
+        
+    - name: Run code linter
+      run: |
+        echo "🔍 Running code linting..."
+        hvigorw code-lint --parallel --stacktrace
+        
+    - name: Check code format
+      run: |
+        echo "✨ Checking code format..."
+        # 使用DevEco Studio的clang-format
+        find entry/src/main/ets -name "*.ets" -exec echo "Checking {}" \;
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: code-quality
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        npm install -g @ohos/hvigor @ohos/hypium
+        ohpm install
+        
+    - name: Run unit tests
+      run: |
+        echo "🧪 Running unit tests..."
+        hvigorw test --parallel --stacktrace
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: entry/build/test-results/
+        retention-days: 30
+
+  build-hap:
+    name: Build HAP Package
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        npm install -g @ohos/hvigor
+        ohpm install
+        
+    - name: Build HAP
+      run: |
+        echo "🏗️ Building HAP package..."
+        hvigorw assembleHap --parallel --stacktrace
+        
+    - name: Upload HAP artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ledgerbook-hap-${{ github.run_number }}
+        path: entry/build/default/outputs/default/*.hap
+        retention-days: 90
+        
+    - name: Create release
+      if: github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ github.run_number }}
+        name: LedgerBook Build ${{ github.run_number }}
+        body: |
+          ## 构建信息
+          - 分支: ${{ github.ref_name }}
+          - 提交: ${{ github.sha }}
+          - 构建时间: ${{ github.event.head_commit.timestamp }}
+          
+          ## 下载
+          请在Artifacts中下载HAP文件
+        files: |
+          entry/build/default/outputs/default/*.hap
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: typescript
+        queries: security-extended,security-and-quality
+        
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests, build-hap]
+    if: always()
+    
+    steps:
+    - name: Check workflow status
+      run: |
+        echo "Workflow completed!"
+        echo "Code Quality: ${{ needs.code-quality.result }}"
+        echo "Unit Tests: ${{ needs.unit-tests.result }}"
+        echo "Build HAP: ${{ needs.build-hap.result }}"

@@ -1,11 +1,13 @@
 import localUnitTest from './LocalUnit.test';
 import DataManagerTest from './DataManager.test';
+import DataManagerHarmonyOSTest from './DataManagerHarmonyOSTest';
 import TransactionUtilsTest from './TransactionUtils.test';
 import StatisticsCalculatorTest from './StatisticsCalculator.test';
 
 export default function testsuite() {
   localUnitTest();
   DataManagerTest();
+  DataManagerHarmonyOSTest();
   TransactionUtilsTest();
   StatisticsCalculatorTest();
 }
